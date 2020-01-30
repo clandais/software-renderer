@@ -11,9 +11,15 @@ export default class Renderer {
     sr: SoftwareRenderer
     backBuffer: ImageData
 
+    zBuffer: Array<number>
+
     constructor(sr: SoftwareRenderer) {
         this.sr = sr
+
+        this.zBuffer = new Array<number>(this.sr.canvas.width * this.sr.canvas.height)
+        this.zBuffer.fill(1000)
         this.backBuffer = this.sr.ctx.createImageData(this.sr.canvas.width, this.sr.canvas.height)
+
     }
 
     clear() {
@@ -25,6 +31,8 @@ export default class Renderer {
             this.backBuffer.data[i + 3] = 255 // alpha
 
         }
+
+        this.zBuffer.fill(1000)
     }
 
     putPixel(x:number, y:number, z:number, color:number) {
@@ -33,6 +41,9 @@ export default class Renderer {
         y = y >> 0
 
         if (x < 0 || y < 0 || x > this.sr.canvas.width || y > this.sr.canvas.height) return 
+
+        if (this.zBuffer[x + y * this.sr.canvas.width] < z) return 
+        else this.zBuffer[x + y * this.sr.canvas.width] = z
 
         this.backBuffer.data[ (x + y * this.sr.canvas.width) * 4] = color >>16
         this.backBuffer.data[(x + y * this.sr.canvas.width) * 4 + 1] = (color >> 8) & 0x00FF
