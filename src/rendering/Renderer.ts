@@ -3,6 +3,8 @@ import { vec3, mat4 } from 'gl-matrix'
 import SoftwareRenderer from './SoftwareRenderer'
 import Mesh from '../objectdata/Mesh'
 import Camera from './Camera'
+import Face from '../objectdata/Face'
+import { MathS } from '../MathS'
 
 export default class Renderer {
     
@@ -42,8 +44,8 @@ export default class Renderer {
     drawPoint(v: vec3, color:number) {
     
         this.putPixel(
-            v[0] * this.sr.canvas.width /2 + this.sr.canvas.width /2 , 
-            v[1] * -this.sr.canvas.height/2 + this.sr.canvas.height /2,
+            v[0], 
+            v[1],
             v[2],
             color)
     }
@@ -98,24 +100,147 @@ export default class Renderer {
             vec3.transformMat4(v2, mesh.vertices[face.B] , mat)
             vec3.transformMat4(v3, mesh.vertices[face.C] , mat)
 
-            this.drawLine(v1, v2, 0xFFFFFF)
-            this.drawLine(v2, v3, 0xFFFFFF)
-            this.drawLine(v3, v1, 0xFFFFFF)
-
+            //this.drawWireFrame(v1, v2, v3)
+            this.drawTriangle(v1, v2, v3, 0xFFFFFF)
         })
-        /*
-        for (let i = 0; i < mesh.vertices.length - 1; i++) {
+    }
 
-            vec3.transformMat4(out1,mesh.vertices[i] , mat)
-            vec3.transformMat4(out2,mesh.vertices[i+1] , mat)
-
-            this.drawLine(out1, out2, 0xFFFFFF)
-        }
-        */
+    drawWireFrame(v1: vec3, v2: vec3, v3: vec3) {
+        this.drawLine(v1, v2, 0xFFFFFF)
+        this.drawLine(v2, v3, 0xFFFFFF)
+        this.drawLine(v3, v1, 0xFFFFFF)
     }
 
     flip(): void {
         this.sr.ctx.putImageData(this.backBuffer, 0, 0)
     }
+
+
+    /**
+     * @see https://www.davrous.com/2013/06/21/tutorial-part-4-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-rasterization-z-buffering/
+     * @param y 
+     * @param pa 
+     * @param pb 
+     * @param pc 
+     * @param pd 
+     * @param color 
+     */
+    processScanLine(y: number, pa: vec3, pb: vec3, pc: vec3, pd: vec3, color: number): void {
+        // Thanks to current Y, we can compute the gradient to compute others values like
+        // the starting X (sx) and ending X (ex) to draw between
+        // if pa.Y == pb.Y or pc.Y == pd.Y, gradient is forced to 1
+        var gradient1 = pa[1] != pb[1] ? (y - pa[1]) / (pb[1] - pa[1]) : 1;
+        var gradient2 = pc[1] != pd[1] ? (y - pc[1]) / (pd[1] - pc[1]) : 1;
+
+        var sx = MathS.interpolate(pa[0], pb[0], gradient1)
+        var ex = MathS.interpolate(pc[0], pd[0], gradient2)
+
+        // drawing a line from left (sx) to right (ex) 
+        for (var x = sx; x < ex; x++) {
+            this.putPixel(x, y, 0, color);
+        }
+    }
+
+    /**
+     * @see https://www.davrous.com/2013/06/21/tutorial-part-4-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-rasterization-z-buffering/
+     * @param p1 
+     * @param p2 
+     * @param p3 
+     * @param color 
+     */
+    drawTriangle(p1: vec3, p2: vec3, p3: vec3, color: number): void {
+        
+        p1[0] = p1[0] * this.sr.canvas.width /2 + this.sr.canvas.width /2
+        p1[1] = p1[1] * -this.sr.canvas.height/2 + this.sr.canvas.height /2
+        p2[0] = p2[0] * this.sr.canvas.width /2 + this.sr.canvas.width /2
+        p2[1] = p2[1] * -this.sr.canvas.height/2 + this.sr.canvas.height /2
+        p3[0] = p3[0] * this.sr.canvas.width /2 + this.sr.canvas.width /2
+        p3[1] = p3[1] * -this.sr.canvas.height/2 + this.sr.canvas.height /2
+        
+
+        // Sorting the points in order to always have this order on screen p1, p2 & p3
+        // with p1 always up (thus having the Y the lowest possible to be near the top screen)
+        // then p2 between p1 & p3
+        
+        if (p1[1] > p2[1]) {
+            var temp = p2;
+            p2 = p1;
+            p1 = temp;
+        }
+
+        if (p2[1] > p3[1]) {
+            var temp = p2;
+            p2 = p3;
+            p3 = temp;
+        }
+
+        if (p1[1] > p2[1]) {
+            var temp = p2;
+            p2 = p1;
+            p1 = temp;
+        }
+
+        // inverse slopes
+        var dP1P2: number; var dP1P3: number;
+
+        // http://en.wikipedia.org/wiki/Slope
+        // Computing slopes
+        if (p2[1] - p1[1] > 0)
+            dP1P2 = (p2[0] - p1[0]) / (p2[1] - p1[1]);
+        else
+            dP1P2 = 0;
+
+        if (p3[1] - p1[1] > 0)
+            dP1P3 = (p3[0] - p1[0]) / (p3[1] - p1[1]);
+        else
+            dP1P3 = 0;
+
+        // First case where triangles are like that:
+        // P1
+        // -
+        // -- 
+        // - -
+        // -  -
+        // -   - P2
+        // -  -
+        // - -
+        // -
+        // P3
+        
+        if (dP1P2 > dP1P3) {
+            for (var y = p1[1] >> 0; y <= p3[1] >> 0; y++) {
+                if (y < p2[1]) {
+                    this.processScanLine(y, p1, p3, p1, p2, color);
+                } else {
+                    this.processScanLine(y, p1, p3, p2, p3, color);
+                }
+            }
+        }
+        // First case where triangles are like that:
+        //       P1
+        //        -
+        //       -- 
+        //      - -
+        //     -  -
+        // P2 -   - 
+        //     -  -
+        //      - -
+        //        -
+        //       P3
+    
+        
+        else {
+            for (var y = p1[1] >> 0; y <= p3[1] >> 0; y++) {
+                if (y < p2[1]) {
+                    this.processScanLine(y, p1, p2, p1, p3, color);
+                } else {
+                    this.processScanLine(y, p2, p3, p1, p3, color);
+                }
+            }
+        }
+        
+    }
+
+
 
 }
