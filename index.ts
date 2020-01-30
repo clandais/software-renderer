@@ -31,10 +31,10 @@ class  SR extends SoftwareRenderer {
             })
 
 
-        this.camera = new Camera(70, 0.1, 100)
+        this.camera = new Camera(70, this.canvas.width/this.canvas.height, 0.1, 100)
 
         this.cube2.transform.translate(
-            vec3.fromValues(0, 0, 5)
+            vec3.fromValues(0, 0, -5)
         )
 
     }

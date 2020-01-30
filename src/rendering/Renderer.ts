@@ -51,16 +51,6 @@ export default class Renderer {
         this.backBuffer.data[(x + y * this.sr.canvas.width) * 4 + 3] = 255
     }
 
-
-    drawPoint(v: vec3, color:number) {
-    
-        this.putPixel(
-            v[0], 
-            v[1],
-            v[2],
-            color)
-    }
-
     /**
      * Draw a lien with bresenham's algorithm
      * @param p1
@@ -104,22 +94,24 @@ export default class Renderer {
         let mat = mesh.transform.transform
         mat4.mul(mat, cam.proj, mat)
 
-
+        let faceIndex = 0
         mesh.faces.forEach( (face) => {
-
+            var color = 0.25 + (faceIndex % mesh.faces.length) * 0.75 / mesh.faces.length;
             vec3.transformMat4(v1, mesh.vertices[face.A] , mat)
             vec3.transformMat4(v2, mesh.vertices[face.B] , mat)
             vec3.transformMat4(v3, mesh.vertices[face.C] , mat)
 
-            //this.drawWireFrame(v1, v2, v3)
-            this.drawTriangle(v1, v2, v3, 0xFFFFFF)
+           // this.drawWireFrame(v1, v2, v3, 0x00FF00)
+
+            this.drawTriangle(v1, v2, v3, color * 255 << 16 | color * 255 << 8 | color * 255)
+            faceIndex++
         })
     }
 
-    drawWireFrame(v1: vec3, v2: vec3, v3: vec3) {
-        this.drawLine(v1, v2, 0xFFFFFF)
-        this.drawLine(v2, v3, 0xFFFFFF)
-        this.drawLine(v3, v1, 0xFFFFFF)
+    drawWireFrame(v1: vec3, v2: vec3, v3: vec3, color: number) {
+        this.drawLine(v1, v2, color)
+        this.drawLine(v2, v3, color)
+        this.drawLine(v3, v1, color)
     }
 
     flip(): void {
@@ -140,15 +132,23 @@ export default class Renderer {
         // Thanks to current Y, we can compute the gradient to compute others values like
         // the starting X (sx) and ending X (ex) to draw between
         // if pa.Y == pb.Y or pc.Y == pd.Y, gradient is forced to 1
-        var gradient1 = pa[1] != pb[1] ? (y - pa[1]) / (pb[1] - pa[1]) : 1;
-        var gradient2 = pc[1] != pd[1] ? (y - pc[1]) / (pd[1] - pc[1]) : 1;
+        let gradient1 = pa[1] != pb[1] ? (y - pa[1]) / (pb[1] - pa[1]) : 1;
+        let gradient2 = pc[1] != pd[1] ? (y - pc[1]) / (pd[1] - pc[1]) : 1;
 
-        var sx = MathS.interpolate(pa[0], pb[0], gradient1)
-        var ex = MathS.interpolate(pc[0], pd[0], gradient2)
+        let sx = MathS.interpolate(pa[0], pb[0], gradient1)
+        let ex = MathS.interpolate(pc[0], pd[0], gradient2)
+
+        // starting Z & ending Z
+        let z1: number = MathS.interpolate(pa[2], pb[2], gradient1);
+        let z2: number = MathS.interpolate(pc[2], pd[2], gradient2);
 
         // drawing a line from left (sx) to right (ex) 
         for (var x = sx; x < ex; x++) {
-            this.putPixel(x, y, 0, color);
+            
+            let gradient: number = (x - sx) / (ex - sx); // normalisation pour dessiner de gauche à droite
+            let z = MathS.interpolate(z1, z2, gradient);
+
+            this.putPixel(x, y, z, color);
         }
     }
 

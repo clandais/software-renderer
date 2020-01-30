@@ -4,9 +4,9 @@ export default class Camera {
 
     proj: mat4
 
-    constructor(fov: number, near: number, far: number) {
+    constructor(fov: number, aspectRatio: number, near: number, far: number) {
 
         this.proj = mat4.create()
-        mat4.perspective(this.proj, fov, 1, near, far)
+        mat4.perspective(this.proj, fov, aspectRatio, near, far)
     }
 }
