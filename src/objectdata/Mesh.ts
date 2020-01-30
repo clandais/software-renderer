@@ -2,6 +2,7 @@ import { vec3, mat4, quat } from "gl-matrix";
 import Face from "./Face";
 import Transform from "./Transform";
 import { BabylonJson } from "./BabylonUtils";
+import Timer from "../utils/Timer";
 
 export default class Mesh {
 
@@ -38,6 +39,10 @@ export default class Mesh {
                 {A: mesh.indices[i], B: mesh.indices[i + 1], C: mesh.indices[i + 2]}
             )
         }
+
+    }
+
+    update(timer: Timer) {
 
     }
 

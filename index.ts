@@ -2,8 +2,9 @@ import {vec3, mat4} from 'gl-matrix'
 import SoftwareRenderer from "./src/rendering/SoftwareRenderer"
 import Mesh, { CubeMesh } from './src/objectdata/Mesh'
 import Camera from './src/rendering/Camera'
-
+import Scene from './src/rendering/Scene'
 import {BabylonJson} from './src/objectdata/BabylonUtils'
+import Timer from './src/utils/Timer'
 
 async function getObj(path) {
     let res = await fetch(path)
@@ -13,48 +14,83 @@ async function getObj(path) {
 
 class  SR extends SoftwareRenderer {
 
-    camera: Camera
+    //camera: Camera
 
-    cube2: Mesh
+   // cube2: Mesh
+
+    scene: Scene
 
     constructor() {
         super()
 
-        this.cube2 = new Mesh()
+        this.scene = new Scene(this)
+
+        let cube2 = new Mesh()
+
+        this.scene.addMesh(cube2)
+
+        let cube3 = new Mesh()
+        this.scene.addMesh(cube3)
 
         let obj: BabylonJson
         getObj('./objs/suzanne.babylon')
         .then( data => 
             {
                 obj = data;
-                this.cube2.fromJson(obj)
+                cube2.fromJson(obj)
+                cube3.fromJson(obj)
             })
 
+        
 
-        this.camera = new Camera(70, this.canvas.width/this.canvas.height, 0.1, 100)
+        cube3.transform.translate(
+            vec3.fromValues(3, 0, -10)
+        )
+        
 
-        this.cube2.transform.translate(
+        cube2.transform.translate(
             vec3.fromValues(0, 0, -5)
         )
+
+        
+        cube2.update = function(timer: Timer) {
+            let rotationX = timer.getDeltaTimeMs()
+            let rotationY = timer.getDeltaTimeMs()
+            let rotationZ = timer.getDeltaTimeMs() * 0.5
+    
+    
+    
+            this.transform.rotate(
+                rotationX,
+                rotationY,
+                rotationZ
+            )
+        }
+
+        cube3.update = function(timer: Timer) {
+            let rotationX = -timer.getDeltaTimeMs()
+            let rotationY = -timer.getDeltaTimeMs()
+            let rotationZ = -timer.getDeltaTimeMs() * 0.5
+    
+    
+    
+            this.transform.rotate(
+                rotationX,
+                rotationY,
+                rotationZ
+            )
+        }
 
     }
 
     render() {
 
 
-        let rotationX = this.timer.getDeltaTimeMs()
-        let rotationY = this.timer.getDeltaTimeMs()
-        let rotationZ = this.timer.getDeltaTimeMs() * 0.5
-
-
-
-        this.cube2.transform.rotate(
-            rotationX,
-            rotationY,
-            rotationZ
-        )
+        this.scene.objects.forEach( o => {
+            o.update(this.timer)
+        })
     
-        this.renderer.drawMesh(this.cube2, this.camera)
+        this.scene.render(this)
     }
 }
 

@@ -3,14 +3,12 @@ import { vec3, mat4 } from 'gl-matrix'
 import SoftwareRenderer from './SoftwareRenderer'
 import Mesh from '../objectdata/Mesh'
 import Camera from './Camera'
-import Face from '../objectdata/Face'
 import { MathS } from '../MathS'
 
 export default class Renderer {
     
     sr: SoftwareRenderer
     backBuffer: ImageData
-
     zBuffer: Array<number>
 
     constructor(sr: SoftwareRenderer) {
@@ -101,7 +99,7 @@ export default class Renderer {
             vec3.transformMat4(v2, mesh.vertices[face.B] , mat)
             vec3.transformMat4(v3, mesh.vertices[face.C] , mat)
 
-           // this.drawWireFrame(v1, v2, v3, 0x00FF00)
+        //    this.drawWireFrame(v1, v2, v3, 0x00FF00)
 
             this.drawTriangle(v1, v2, v3, color * 255 << 16 | color * 255 << 8 | color * 255)
             faceIndex++
@@ -143,7 +141,7 @@ export default class Renderer {
         let z2: number = MathS.interpolate(pc[2], pd[2], gradient2);
 
         // drawing a line from left (sx) to right (ex) 
-        for (var x = sx; x < ex; x++) {
+        for (let x = sx; x < ex; x++) {
             
             let gradient: number = (x - sx) / (ex - sx); // normalisation pour dessiner de gauche à droite
             let z = MathS.interpolate(z1, z2, gradient);
